@@ -16,6 +16,7 @@ struct ContentView: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
             
 
+                
                 if linePoints.count > 1 {
                     ArrowPathWithHead(points: linePoints)
                         .stroke(Color.red, lineWidth: 4)
