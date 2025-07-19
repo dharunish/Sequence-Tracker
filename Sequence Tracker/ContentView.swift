@@ -1,11 +1,9 @@
 import SwiftUI
 
-
-import SwiftUI
-
 struct ContentView: View {
     @State private var linePoints: [CGPoint] = []
     @State private var showArrow: Bool = false
+    @State private var savedLines: [[CGPoint]] = []
 
     var body: some View {
         GeometryReader { geometry in
@@ -14,17 +12,43 @@ struct ContentView: View {
                     .resizable()
                     .ignoresSafeArea()
                     .frame(width: geometry.size.width, height: geometry.size.height)
-            
 
-                
+                // Show current drawing line
                 if linePoints.count > 1 {
                     ArrowPathWithHead(points: linePoints)
                         .stroke(Color.red, lineWidth: 4)
                         .opacity(showArrow ? 1 : 0)
                         .animation(.easeOut(duration: 0.25), value: showArrow)
-                        .onDisappear {
-                            linePoints.removeAll()
+                        
+
+                }
+
+                // Show all saved lines
+                ForEach(savedLines.indices, id: \.self) { i in
+                    ArrowPathWithHead(points: savedLines[i])
+                        .stroke(Color.blue, lineWidth: 4)
+                }
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button("Load Saved") {
+                            loadSavedLines()
                         }
+                        .padding()
+                        .background(Color.green.opacity(0.8))
+                        .cornerRadius(8)
+                        .foregroundColor(.white)
+
+                        Button("Clear Saved") {
+                            clearSavedLines()
+                        }
+                        .padding()
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
+                        .foregroundColor(.white)
+                    }
+                    .padding()
                 }
             }
             .gesture(
@@ -38,13 +62,49 @@ struct ContentView: View {
                         }
                     }
                     .onEnded { _ in
-                        showArrow = false // Triggers fade and then disappearance
+                        showArrow = false
+                        saveLine(points: linePoints)
+                        linePoints.removeAll()
                     }
             )
         }
     }
-}
 
+    // MARK: - File Handling
+
+    func saveLine(points: [CGPoint]) {
+        var current = loadFromFile()
+        current.append(points)
+        if let data = try? JSONEncoder().encode(current) {
+            try? data.write(to: linesURL())
+        }
+        //savedLines = current
+        //print(savedLines)
+    }
+
+    func loadSavedLines() {
+        savedLines = loadFromFile()
+    }
+
+    func clearSavedLines() {
+        savedLines.removeAll()
+        try? FileManager.default.removeItem(at: linesURL())
+    }
+
+    func loadFromFile() -> [[CGPoint]] {
+        guard let data = try? Data(contentsOf: linesURL()),
+              let decoded = try? JSONDecoder().decode([[CGPoint]].self, from: data)
+        else {
+            print("No saved lines found.")
+            return []
+        }
+        return decoded
+    }
+
+    func linesURL() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("lines.json")
+    }
+}
 
 
 struct ArrowPathWithHead: Shape {
@@ -83,12 +143,6 @@ struct ArrowPathWithHead: Shape {
         return path
     }
 }
-
-
-
-
-
-
 #Preview {
     ContentView()
 }
